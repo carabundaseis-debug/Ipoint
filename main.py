@@ -35,6 +35,10 @@ COR_CAT_INVESTIMENTO = (0.25, 0.55, 1.0, 1)  # azul royal
 COR_CAT_PORQUINHO = (0.45, 0.75, 1.0, 1)     # azul claro/celeste
 COR_CAT_EMPRESTIMO = (0.35, 0.35, 0.95, 1)   # azul-anil (mais escuro/roxeado)
 
+COR_AZUL_ACO = (0.14, 0.36, 0.62, 1)         # azul aço — botões secundários
+COR_AZUL_PROFUNDO = (0.02, 0.10, 0.22, 1)    # azul quase-preto — detalhes de fundo
+COR_AZUL_MEDIO = (0.10, 0.30, 0.55, 1)       # azul intermediário — variações de card
+
 Window.clearcolor = COR_FUNDO
 
 KV = """
@@ -79,7 +83,7 @@ KV = """
     height: dp(44)
     canvas.before:
         Color:
-            rgba: app.cor_card_claro
+            rgba: app.cor_azul_aco if self.state == "normal" else app.cor_azul_medio
         RoundedRectangle:
             pos: self.pos
             size: self.size
@@ -109,6 +113,25 @@ KV = """
     height: dp(56)
     spacing: dp(8)
     padding: [dp(4), 0]
+
+<Spinner>:
+    color: app.cor_texto
+    background_normal: ""
+    background_down: ""
+    background_color: app.cor_card_claro
+    canvas.before:
+        Color:
+            rgba: app.cor_card_claro
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(16)]
+
+<SpinnerOption>:
+    color: app.cor_texto
+    background_normal: ""
+    background_down: ""
+    background_color: app.cor_azul_aco
 
 <HomeScreen>:
     BoxLayout:
@@ -442,6 +465,14 @@ KV = """
             on_release: root.ir_chave()
 
         PBSecondaryButton:
+            text: "Configurar PIN"
+            on_release: root.ir_criar_pin()
+
+        PBSecondaryButton:
+            text: "Avisos"
+            on_release: root.ir_avisos()
+
+        PBSecondaryButton:
             text: "Sair"
             on_release: root.sair()
 
@@ -522,6 +553,169 @@ KV = """
                 text_size: self.size
 
         Widget:
+
+<PinScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(24)
+        spacing: dp(16)
+
+        Widget:
+            size_hint_y: None
+            height: dp(60)
+
+        Label:
+            text: "Ipoint"
+            color: app.cor_ciano
+            bold: True
+            font_size: "30sp"
+            size_hint_y: None
+            height: dp(44)
+
+        Label:
+            text: "Digite seu PIN"
+            color: app.cor_texto_muted
+            size_hint_y: None
+            height: dp(24)
+
+        Widget:
+            size_hint_y: None
+            height: dp(10)
+
+        PBInput:
+            id: campo_pin
+            hint_text: "PIN"
+            password: True
+            input_filter: "int"
+            halign: "center"
+
+        PBButton:
+            text: "Entrar"
+            on_release: root.entrar()
+
+        PBSecondaryButton:
+            text: "Usar e-mail e senha"
+            on_release: root.usar_login()
+
+        Widget:
+
+<CriarPinScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(18)
+        spacing: dp(14)
+        TopBar:
+            PBSecondaryButton:
+                text: "< Voltar"
+                size_hint_x: None
+                width: dp(90)
+                on_release: root.voltar()
+            Label:
+                text: "Configurar PIN"
+                color: app.cor_texto
+                bold: True
+                font_size: "18sp"
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+        Label:
+            text: "Crie um PIN de pelo menos 4 números pra entrar mais rápido da próxima vez, sem digitar e-mail e senha."
+            color: app.cor_texto_muted
+            size_hint_y: None
+            height: dp(60)
+            halign: "left"
+            text_size: self.width, None
+
+        PBInput:
+            id: campo_pin
+            hint_text: "Novo PIN"
+            password: True
+            input_filter: "int"
+
+        PBInput:
+            id: campo_pin_confirma
+            hint_text: "Confirme o PIN"
+            password: True
+            input_filter: "int"
+
+        PBButton:
+            text: "Salvar PIN"
+            on_release: root.salvar()
+
+        Widget:
+
+<AvisosScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(18)
+        spacing: dp(14)
+        TopBar:
+            PBSecondaryButton:
+                text: "< Voltar"
+                size_hint_x: None
+                width: dp(90)
+                on_release: root.voltar()
+            Label:
+                text: "Avisos"
+                color: app.cor_texto
+                bold: True
+                font_size: "20sp"
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+        PBButton:
+            id: botao_novo_aviso
+            text: "+ Novo aviso"
+            size_hint_y: None
+            height: dp(0)
+            opacity: 0
+            disabled: True
+            on_release: root.ir_novo_aviso()
+
+        ScrollView:
+            BoxLayout:
+                id: lista_avisos
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: dp(8)
+
+<NovoAvisoScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(18)
+        spacing: dp(14)
+        TopBar:
+            PBSecondaryButton:
+                text: "< Voltar"
+                size_hint_x: None
+                width: dp(90)
+                on_release: root.voltar()
+            Label:
+                text: "Novo aviso"
+                color: app.cor_texto
+                bold: True
+                font_size: "18sp"
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+        PBInput:
+            id: campo_titulo
+            hint_text: "Título"
+
+        PBInput:
+            id: campo_mensagem
+            hint_text: "Mensagem"
+            size_hint_y: None
+            height: dp(120)
+            multiline: True
+
+        PBButton:
+            text: "Publicar"
+            on_release: root.publicar()
 
 <LoginScreen>:
     BoxLayout:
@@ -918,8 +1112,15 @@ class MenuScreen(Screen):
     def ir_chave(self):
         self.manager.current = "chave"
 
+    def ir_criar_pin(self):
+        self.manager.current = "criar_pin"
+
+    def ir_avisos(self):
+        self.manager.current = "avisos"
+
     def sair(self):
         db.logout()
+        db.remover_pin()
         App.get_running_app().conta_atual_id = None
         self.manager.current = "login"
 
@@ -1008,6 +1209,142 @@ class ChaveScreen(Screen):
         self.manager.current = "menu"
 
 
+class PinScreen(Screen):
+    def entrar(self):
+        pin = self.ids.campo_pin.text.strip()
+        if not pin:
+            popup_erro("Digite seu PIN.")
+            return
+        try:
+            db.entrar_com_pin(pin)
+        except db.ApiError as e:
+            popup_erro(str(e))
+            return
+        self.ids.campo_pin.text = ""
+        App.get_running_app().conta_atual_id = None
+        self.manager.current = "home"
+
+    def usar_login(self):
+        self.ids.campo_pin.text = ""
+        self.manager.current = "login"
+
+
+class CriarPinScreen(Screen):
+    def salvar(self):
+        pin = self.ids.campo_pin.text.strip()
+        confirma = self.ids.campo_pin_confirma.text.strip()
+        if not pin or len(pin) < 4:
+            popup_erro("O PIN precisa ter pelo menos 4 números.")
+            return
+        if pin != confirma:
+            popup_erro("Os PINs não são iguais.")
+            return
+        try:
+            db.salvar_pin(pin)
+        except db.ApiError as e:
+            popup_erro(str(e))
+            return
+        self.ids.campo_pin.text = ""
+        self.ids.campo_pin_confirma.text = ""
+        popup_erro("PIN configurado! Da próxima vez você pode entrar só com ele.")
+        self.manager.current = "menu"
+
+    def voltar(self):
+        self.manager.current = "menu"
+
+
+class AvisosScreen(Screen):
+    def on_pre_enter(self, *args):
+        botao = self.ids.botao_novo_aviso
+        try:
+            admin = db.sou_admin()
+        except db.ApiError:
+            admin = False
+        if admin:
+            botao.height = dp(48)
+            botao.opacity = 1
+            botao.disabled = False
+        else:
+            botao.height = 0
+            botao.opacity = 0
+            botao.disabled = True
+
+        try:
+            avisos = db.listar_avisos()
+        except db.ApiError as e:
+            popup_erro(str(e))
+            avisos = []
+
+        lista = self.ids.lista_avisos
+        lista.clear_widgets()
+        if not avisos:
+            lista.add_widget(Label(text="Nenhum aviso por enquanto.", color=COR_TEXTO_MUTED,
+                                    size_hint_y=None, height=dp(40)))
+            return
+        for aviso in avisos:
+            lista.add_widget(self._linha_aviso(aviso))
+
+    def _linha_aviso(self, aviso):
+        from kivy.graphics import Color, RoundedRectangle
+        box = BoxLayout(orientation="vertical", padding=[dp(14), dp(10)],
+                         size_hint_y=None, spacing=dp(4))
+        box.bind(minimum_height=box.setter("height"))
+
+        def redraw(*_):
+            box.canvas.before.clear()
+            with box.canvas.before:
+                Color(*COR_CARD)
+                RoundedRectangle(pos=box.pos, size=box.size, radius=[dp(18)])
+
+        box.bind(pos=redraw, size=redraw)
+
+        titulo = Label(text=aviso.get("titulo", ""), color=COR_CIANO, bold=True,
+                        halign="left", valign="middle", font_size="15sp",
+                        size_hint_y=None, height=dp(24))
+        titulo.bind(size=lambda w, *_: setattr(w, "text_size", w.size))
+
+        mensagem = Label(text=aviso.get("mensagem", ""), color=COR_TEXTO,
+                          halign="left", valign="top", font_size="13sp",
+                          size_hint_y=None, text_size=(Window.width - dp(70), None))
+        mensagem.bind(texture_size=lambda w, *_: setattr(w, "height", w.texture_size[1]))
+
+        data = Label(text=(aviso.get("criado_em") or "")[:16].replace("T", " "),
+                     color=COR_TEXTO_MUTED, halign="left", valign="middle",
+                     font_size="11sp", size_hint_y=None, height=dp(18))
+        data.bind(size=lambda w, *_: setattr(w, "text_size", w.size))
+
+        box.add_widget(titulo)
+        box.add_widget(mensagem)
+        box.add_widget(data)
+        return box
+
+    def ir_novo_aviso(self):
+        self.manager.current = "novo_aviso"
+
+    def voltar(self):
+        self.manager.current = "menu"
+
+
+class NovoAvisoScreen(Screen):
+    def publicar(self):
+        titulo = self.ids.campo_titulo.text.strip()
+        mensagem = self.ids.campo_mensagem.text.strip()
+        if not titulo or not mensagem:
+            popup_erro("Preencha o título e a mensagem.")
+            return
+        try:
+            db.criar_aviso(titulo, mensagem)
+        except db.ApiError as e:
+            popup_erro(str(e))
+            return
+        self.ids.campo_titulo.text = ""
+        self.ids.campo_mensagem.text = ""
+        self.manager.current = "avisos"
+
+    def voltar(self):
+        self.manager.current = "avisos"
+
+
 class LoginScreen(Screen):
     def entrar(self):
         email = self.ids.campo_email.text.strip()
@@ -1068,6 +1405,9 @@ class PontosBankApp(App):
     cor_ciano_escuro = ObjectProperty(COR_CIANO_ESCURO)
     cor_texto = ObjectProperty(COR_TEXTO)
     cor_texto_muted = ObjectProperty(COR_TEXTO_MUTED)
+    cor_azul_aco = ObjectProperty(COR_AZUL_ACO)
+    cor_azul_profundo = ObjectProperty(COR_AZUL_PROFUNDO)
+    cor_azul_medio = ObjectProperty(COR_AZUL_MEDIO)
     conta_atual_id = NumericProperty(allownone=True)
 
     def build(self):
@@ -1086,7 +1426,11 @@ class PontosBankApp(App):
         sm.add_widget(MenuScreen(name="menu"))
         sm.add_widget(TermosScreen(name="termos"))
         sm.add_widget(ChaveScreen(name="chave"))
-        sm.current = "login"
+        sm.add_widget(PinScreen(name="pin"))
+        sm.add_widget(CriarPinScreen(name="criar_pin"))
+        sm.add_widget(AvisosScreen(name="avisos"))
+        sm.add_widget(NovoAvisoScreen(name="novo_aviso"))
+        sm.current = "pin" if db.tem_pin_configurado() else "login"
         return sm
 
 

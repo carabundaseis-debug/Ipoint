@@ -4,6 +4,9 @@ Faz login/registro e todas as operações de conta pela internet,
 em vez de guardar tudo só no celular.
 """
 import requests
+import hashlib
+import json
+import os
 
 SUPABASE_URL = "https://jvjbssjiqqbzcazbdxax.supabase.co"
 SUPABASE_ANON_KEY = "sb_publishable_l5uT28KXelNEtesmh9zQDA_LHKqjfv3"
@@ -198,6 +201,102 @@ def minha_chave():
     if resultado:
         return resultado[0].get("chave")
     return None
+
+
+def sou_admin():
+    resultado = _get("perfis", params={"select": "eh_admin"})
+    if resultado:
+        return bool(resultado[0].get("eh_admin"))
+    return False
+
+
+def listar_avisos(limite=30):
+    return _get("avisos", params={"select": "*", "order": "criado_em.desc", "limit": limite})
+
+
+def criar_aviso(titulo, mensagem):
+    _post("avisos", {"titulo": titulo, "mensagem": mensagem})
+
+
+# ---------------------------------------------------------------------------
+# PIN local (login rápido sem digitar e-mail/senha de novo no mesmo aparelho)
+# ---------------------------------------------------------------------------
+
+def _arquivo_sessao():
+    try:
+        from kivy.app import App
+        base = App.get_running_app().user_data_dir
+    except Exception:
+        base = os.path.dirname(os.path.abspath(__file__))
+    os.makedirs(base, exist_ok=True)
+    return os.path.join(base, "sessao_local.json")
+
+
+def salvar_pin(pin):
+    if not (_refresh_token and _user_email):
+        raise ApiError("Faça login normal antes de configurar um PIN.")
+    dados = {
+        "email": _user_email,
+        "refresh_token": _refresh_token,
+        "pin_hash": hashlib.sha256(pin.encode()).hexdigest(),
+    }
+    with open(_arquivo_sessao(), "w") as f:
+        json.dump(dados, f)
+
+
+def tem_pin_configurado():
+    caminho = _arquivo_sessao()
+    if not os.path.exists(caminho):
+        return False
+    try:
+        with open(caminho) as f:
+            dados = json.load(f)
+        return bool(dados.get("pin_hash"))
+    except Exception:
+        return False
+
+
+def entrar_com_pin(pin):
+    global _access_token, _refresh_token, _user_email
+    caminho = _arquivo_sessao()
+    if not os.path.exists(caminho):
+        raise ApiError("Nenhum PIN configurado neste aparelho.")
+    try:
+        with open(caminho) as f:
+            dados = json.load(f)
+    except Exception:
+        raise ApiError("Não foi possível ler o PIN salvo.")
+
+    if hashlib.sha256(pin.encode()).hexdigest() != dados.get("pin_hash"):
+        raise ApiError("PIN incorreto.")
+
+    try:
+        r = requests.post(
+            f"{SUPABASE_URL}/auth/v1/token?grant_type=refresh_token",
+            json={"refresh_token": dados["refresh_token"]},
+            headers=_headers(autenticado=False),
+            timeout=20,
+        )
+    except requests.RequestException:
+        raise ApiError("Não foi possível conectar. Verifique sua internet.")
+
+    resposta = r.json() if r.text else {}
+    if r.status_code >= 400:
+        raise ApiError("Sessão expirada. Entre novamente com e-mail e senha.")
+
+    _access_token = resposta["access_token"]
+    _refresh_token = resposta.get("refresh_token", dados["refresh_token"])
+    _user_email = dados["email"]
+
+    dados["refresh_token"] = _refresh_token
+    with open(caminho, "w") as f:
+        json.dump(dados, f)
+
+
+def remover_pin():
+    caminho = _arquivo_sessao()
+    if os.path.exists(caminho):
+        os.remove(caminho)
 
 
 def resgatar_bonus_diario():
