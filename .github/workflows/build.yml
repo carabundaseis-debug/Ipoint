@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
@@ -66,3 +68,12 @@ jobs:
         with:
           name: ipoint-apk
           path: bin/*.apk
+
+      - name: Publicar APK como Release (download público)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Ipoint - build ${{ github.run_number }}
+          files: bin/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
