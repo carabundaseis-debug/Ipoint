@@ -1,0 +1,68 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências do sistema
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git zip unzip \
+            autoconf libtool pkg-config \
+            zlib1g-dev libncurses-dev cmake \
+            libffi-dev libssl-dev automake build-essential
+
+      - name: Instalar Buildozer
+        run: |
+          pip install --upgrade pip
+          pip install buildozer==1.5.0 cython==0.29.33
+
+      - name: Compilar APK com Buildozer
+        run: |
+          set -o pipefail
+          yes | buildozer android debug 2>&1 | tee buildozer_log.txt
+
+      - name: Gerar resumo do log (últimas linhas)
+        if: always()
+        run: |
+          tail -n 400 buildozer_log.txt > buildozer_log_resumo.txt || true
+
+      - name: Publicar resumo do log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-resumo
+          path: buildozer_log_resumo.txt
+
+      - name: Publicar log completo do build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-completo
+          path: buildozer_log.txt
+
+      - name: Publicar APK como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipoint-apk
+          path: bin/*.apk
