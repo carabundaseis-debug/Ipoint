@@ -184,12 +184,20 @@ def depositar(conta_id, valor, descricao="Depósito"):
     _post("transacoes", {"conta_id": conta_id, "tipo": "entrada", "valor": valor, "descricao": descricao})
 
 
-def transferir_para_email(email_destino, valor, descricao=None):
-    _rpc("transferir_para_email", {
-        "email_destino": email_destino.strip().lower(),
+def transferir_para_destino(destino, valor, descricao=None):
+    _rpc("transferir_para_destino", {
+        "destino": destino.strip(),
         "valor_transferido": float(valor),
         "descricao_transferencia": descricao,
     })
+
+
+def minha_chave():
+    """Busca a chave aleatória do usuário logado (para mostrar/gerar o QR code)."""
+    resultado = _get("perfis", params={"select": "chave,email"})
+    if resultado:
+        return resultado[0].get("chave")
+    return None
 
 
 def resgatar_bonus_diario():

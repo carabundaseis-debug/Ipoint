@@ -17,17 +17,23 @@ from kivy.core.window import Window
 import api as db
 
 # ---------------------------------------------------------------------------
-# Paleta de cores — azul escuro + ciano
+# Paleta de cores — azul escuro + ciano, em vários tons
 # ---------------------------------------------------------------------------
 COR_FUNDO = (0.039, 0.086, 0.157, 1)        # #0A1628 fundo geral
 COR_CARD = (0.063, 0.165, 0.275, 1)          # #102A46 cartões
 COR_CARD_CLARO = (0.09, 0.22, 0.35, 1)       # cartões/itens de lista
-COR_CIANO = (0.0, 0.851, 1.0, 1)             # #00D9FF destaque
+COR_CIANO = (0.0, 0.851, 1.0, 1)             # #00D9FF destaque (conta Comum)
 COR_CIANO_ESCURO = (0.0, 0.72, 0.83, 1)      # botões pressionados
 COR_TEXTO = (0.92, 0.96, 1.0, 1)
 COR_TEXTO_MUTED = (0.60, 0.70, 0.78, 1)
 COR_ENTRADA = (0.30, 0.95, 0.75, 1)          # verde-ciano p/ entradas
 COR_SAIDA = (1.0, 0.42, 0.42, 1)             # vermelho p/ saídas
+
+# Um tom de azul por categoria de conta
+COR_CAT_COMUM = (0.0, 0.851, 1.0, 1)         # ciano
+COR_CAT_INVESTIMENTO = (0.25, 0.55, 1.0, 1)  # azul royal
+COR_CAT_PORQUINHO = (0.45, 0.75, 1.0, 1)     # azul claro/celeste
+COR_CAT_EMPRESTIMO = (0.35, 0.35, 0.95, 1)   # azul-anil (mais escuro/roxeado)
 
 Window.clearcolor = COR_FUNDO
 
@@ -41,7 +47,7 @@ KV = """
         RoundedRectangle:
             pos: self.pos
             size: self.size
-            radius: [dp(18)]
+            radius: [dp(26)]
     padding: dp(16)
     spacing: dp(8)
 
@@ -60,7 +66,7 @@ KV = """
         RoundedRectangle:
             pos: self.pos
             size: self.size
-            radius: [dp(12)]
+            radius: [dp(24)]
 
 <PBSecondaryButton@Button>:
     background_normal: ""
@@ -77,19 +83,26 @@ KV = """
         RoundedRectangle:
             pos: self.pos
             size: self.size
-            radius: [dp(12)]
+            radius: [dp(22)]
 
 <PBInput@TextInput>:
     background_normal: ""
     background_active: ""
-    background_color: app.cor_card_claro
+    background_color: (0, 0, 0, 0)
     foreground_color: app.cor_texto
     hint_text_color: app.cor_texto_muted
     cursor_color: app.cor_ciano
-    padding: [dp(14), dp(14)]
+    padding: [dp(16), dp(14)]
     size_hint_y: None
     height: dp(48)
     multiline: False
+    canvas.before:
+        Color:
+            rgba: app.cor_card_claro
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(22)]
 
 <TopBar@BoxLayout>:
     size_hint_y: None
@@ -226,7 +239,7 @@ KV = """
                 halign: "left"
                 text_size: self.size
             Label:
-                text: "E-mail de quem vai receber"
+                text: "E-mail ou chave de quem vai receber"
                 color: app.cor_texto_muted
                 size_hint_y: None
                 height: dp(20)
@@ -234,8 +247,7 @@ KV = """
                 text_size: self.size
             PBInput:
                 id: campo_email_destino
-                hint_text: "email@exemplo.com"
-                input_type: "mail"
+                hint_text: "email@exemplo.com ou IPT-XXXXXXXX"
             Label:
                 text: "Valor (pontos)"
                 color: app.cor_texto_muted
@@ -246,7 +258,6 @@ KV = """
             PBInput:
                 id: campo_valor
                 hint_text: "ex: 1,50"
-                input_filter: "float"
 
         PBButton:
             text: "Confirmar transferência"
@@ -322,7 +333,6 @@ KV = """
             PBInput:
                 id: campo_saldo
                 hint_text: "0,00"
-                input_filter: "float"
             Label:
                 text: "Categoria"
                 color: app.cor_texto_muted
@@ -333,7 +343,7 @@ KV = """
             Spinner:
                 id: spinner_categoria
                 text: "Comum"
-                values: ["Comum", "Investimento", "Porquinho"]
+                values: ["Comum", "Investimento", "Porquinho", "Empréstimo"]
                 size_hint_y: None
                 height: dp(44)
                 background_normal: ""
@@ -376,7 +386,6 @@ KV = """
             PBInput:
                 id: campo_valor
                 hint_text: "Valor (ex: 1,50)"
-                input_filter: "float"
             PBInput:
                 id: campo_desc
                 hint_text: "Descrição (opcional)"
@@ -429,6 +438,10 @@ KV = """
             on_release: root.ir_termos()
 
         PBSecondaryButton:
+            text: "Minha Chave"
+            on_release: root.ir_chave()
+
+        PBSecondaryButton:
             text: "Sair"
             on_release: root.sair()
 
@@ -461,6 +474,54 @@ KV = """
                 halign: "left"
                 valign: "top"
                 font_size: "14sp"
+
+<ChaveScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(18)
+        spacing: dp(14)
+        TopBar:
+            PBSecondaryButton:
+                text: "< Voltar"
+                size_hint_x: None
+                width: dp(90)
+                on_release: root.voltar()
+            Label:
+                text: "Minha Chave"
+                color: app.cor_texto
+                bold: True
+                font_size: "20sp"
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+        Label:
+            text: "Mostre esse QR code ou compartilhe a chave pra alguém te mandar pontos"
+            color: app.cor_texto_muted
+            size_hint_y: None
+            height: dp(50)
+            halign: "center"
+            text_size: self.width, None
+
+        Widget:
+            id: qr_container
+            size_hint_y: None
+            height: dp(260)
+
+        CardBox:
+            orientation: "vertical"
+            size_hint_y: None
+            height: dp(70)
+            Label:
+                text: root.texto_chave
+                color: app.cor_ciano
+                bold: True
+                font_size: "18sp"
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+
+        Widget:
 
 <LoginScreen>:
     BoxLayout:
@@ -612,8 +673,21 @@ class HomeScreen(Screen):
             lista.add_widget(item)
 
     def _rotulo_categoria(self, categoria):
-        rotulos = {"investimento": "[Investimento] ", "porquinho": "[Porquinho] "}
+        rotulos = {
+            "investimento": "[Investimento] ",
+            "porquinho": "[Porquinho] ",
+            "emprestimo": "[Empréstimo] ",
+        }
         return rotulos.get((categoria or "comum").lower(), "")
+
+    def _cor_categoria(self, categoria):
+        cores = {
+            "comum": COR_CAT_COMUM,
+            "investimento": COR_CAT_INVESTIMENTO,
+            "porquinho": COR_CAT_PORQUINHO,
+            "emprestimo": COR_CAT_EMPRESTIMO,
+        }
+        return cores.get((categoria or "comum").lower(), COR_CAT_COMUM)
 
     def _linha_conta(self, conta):
         app = App.get_running_app()
@@ -632,15 +706,15 @@ class HomeScreen(Screen):
             with box.canvas.before:
                 is_atual = conta["id"] == app.conta_atual_id
                 Color(*(COR_CARD_CLARO if is_atual else COR_CARD))
-                RoundedRectangle(pos=box.pos, size=box.size, radius=[dp(14)])
+                RoundedRectangle(pos=box.pos, size=box.size, radius=[dp(20)])
 
         box.bind(pos=redraw, size=redraw)
         nome_lbl = Label(text=self._rotulo_categoria(conta["categoria"]) + conta["nome"],
                           color=COR_TEXTO, halign="left",
                           valign="middle", bold=(conta["id"] == app.conta_atual_id))
         nome_lbl.bind(size=lambda w, *_: setattr(w, "text_size", w.size))
-        saldo_lbl = Label(text=fmt(conta["saldo"]) + " pts", color=COR_CIANO,
-                           halign="right", valign="middle")
+        saldo_lbl = Label(text=fmt(conta["saldo"]) + " pts", color=self._cor_categoria(conta["categoria"]),
+                           halign="right", valign="middle", bold=True)
         saldo_lbl.bind(size=lambda w, *_: setattr(w, "text_size", w.size))
         box.add_widget(nome_lbl)
         box.add_widget(saldo_lbl)
@@ -704,7 +778,7 @@ class TransferirScreen(Screen):
             popup_erro("Digite um valor válido.")
             return
         try:
-            db.transferir_para_email(email_destino, valor)
+            db.transferir_para_destino(email_destino, valor)
         except db.ApiError as e:
             popup_erro(str(e))
             return
@@ -743,7 +817,7 @@ class ExtratoScreen(Screen):
             box.canvas.before.clear()
             with box.canvas.before:
                 Color(*COR_CARD)
-                RoundedRectangle(pos=box.pos, size=box.size, radius=[dp(12)])
+                RoundedRectangle(pos=box.pos, size=box.size, radius=[dp(18)])
 
         box.bind(pos=redraw, size=redraw)
 
@@ -783,7 +857,7 @@ class NovaContaScreen(Screen):
         except ValueError:
             popup_erro("Saldo inicial inválido.")
             return
-        categoria_map = {"Comum": "comum", "Investimento": "investimento", "Porquinho": "porquinho"}
+        categoria_map = {"Comum": "comum", "Investimento": "investimento", "Porquinho": "porquinho", "Empréstimo": "emprestimo"}
         categoria = categoria_map.get(self.ids.spinner_categoria.text, "comum")
         try:
             novo_id = db.criar_conta(nome, saldo, categoria)
@@ -841,6 +915,9 @@ class MenuScreen(Screen):
     def ir_termos(self):
         self.manager.current = "termos"
 
+    def ir_chave(self):
+        self.manager.current = "chave"
+
     def sair(self):
         db.logout()
         App.get_running_app().conta_atual_id = None
@@ -870,6 +947,62 @@ class TermosScreen(Screen):
         "Estes termos podem ser atualizados a qualquer momento para "
         "melhor atender aos usuarios do aplicativo."
     )
+
+    def voltar(self):
+        self.manager.current = "menu"
+
+
+class ChaveScreen(Screen):
+    texto_chave = StringProperty("Carregando...")
+
+    def on_pre_enter(self, *args):
+        try:
+            chave = db.minha_chave()
+        except db.ApiError as e:
+            popup_erro(str(e))
+            chave = None
+        self.texto_chave = chave or "Não foi possível carregar a chave."
+        self._desenhar_qr(chave)
+
+    def _desenhar_qr(self, chave):
+        container = self.ids.qr_container
+        container.canvas.before.clear()
+        if not chave:
+            return
+        try:
+            import qrcode
+        except ImportError:
+            return
+
+        from kivy.graphics import Color, Rectangle
+
+        qr = qrcode.QRCode(border=1, box_size=1)
+        qr.add_data(chave)
+        qr.make(fit=True)
+        matriz = qr.get_matrix()
+        n = len(matriz)
+
+        def redraw(*_):
+            container.canvas.before.clear()
+            lado = min(container.width, container.height)
+            if lado <= 0 or n == 0:
+                return
+            tam_celula = lado / n
+            offset_x = container.x + (container.width - lado) / 2
+            offset_y = container.y + (container.height - lado) / 2
+            with container.canvas.before:
+                Color(1, 1, 1, 1)
+                Rectangle(pos=(offset_x, offset_y), size=(lado, lado))
+                Color(0.02, 0.06, 0.10, 1)
+                for linha_i, linha in enumerate(matriz):
+                    for col_i, escuro in enumerate(linha):
+                        if escuro:
+                            x = offset_x + col_i * tam_celula
+                            y = offset_y + (n - 1 - linha_i) * tam_celula
+                            Rectangle(pos=(x, y), size=(tam_celula + 0.5, tam_celula + 0.5))
+
+        container.bind(pos=redraw, size=redraw)
+        redraw()
 
     def voltar(self):
         self.manager.current = "menu"
@@ -952,6 +1085,7 @@ class PontosBankApp(App):
         sm.add_widget(DepositarScreen(name="depositar"))
         sm.add_widget(MenuScreen(name="menu"))
         sm.add_widget(TermosScreen(name="termos"))
+        sm.add_widget(ChaveScreen(name="chave"))
         sm.current = "login"
         return sm
 

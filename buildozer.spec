@@ -8,7 +8,7 @@ source.include_exts = py,png,jpg,kv,atlas
 
 version = 1.0
 
-requirements = python3==3.11.8,hostpython3==3.11.8,kivy==2.3.0,requests,certifi,urllib3,idna,charset-normalizer
+requirements = python3==3.11.8,hostpython3==3.11.8,kivy==2.3.0,requests,certifi,urllib3,idna,charset-normalizer,qrcode
 
 orientation = portrait
 fullscreen = 0
