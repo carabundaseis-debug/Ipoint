@@ -1,6 +1,6 @@
 """
 Ipoint — um "banco" de pontos (não dinheiro de verdade).
-App Android feito em Kivy. Toda a lógica de dados está em db.py.
+App Android feito em Kivy. Login e dados ficam no Supabase (api.py).
 """
 from kivy.app import App
 from kivy.lang import Builder
@@ -14,7 +14,7 @@ from kivy.properties import StringProperty, NumericProperty, ObjectProperty
 from kivy.metrics import dp
 from kivy.core.window import Window
 
-import db
+import api as db
 
 # ---------------------------------------------------------------------------
 # Paleta de cores — azul escuro + ciano
@@ -104,6 +104,16 @@ KV = """
         spacing: dp(14)
 
         TopBar:
+            Button:
+                text: "="
+                size_hint_x: None
+                width: dp(44)
+                background_normal: ""
+                background_color: (0,0,0,0)
+                color: app.cor_ciano
+                bold: True
+                font_size: "22sp"
+                on_release: root.ir_menu()
             Label:
                 text: "Ipoint"
                 color: app.cor_texto
@@ -163,6 +173,10 @@ KV = """
                 text: "+ Nova conta"
                 on_release: root.ir_nova_conta()
 
+        PBSecondaryButton:
+            text: "Resgatar bônus diário"
+            on_release: root.resgatar_bonus()
+
         Label:
             text: "Minhas contas"
             color: app.cor_texto_muted
@@ -203,7 +217,7 @@ KV = """
         CardBox:
             orientation: "vertical"
             size_hint_y: None
-            height: dp(230)
+            height: dp(200)
             Label:
                 text: "De: " + root.nome_origem
                 color: app.cor_texto_muted
@@ -212,22 +226,16 @@ KV = """
                 halign: "left"
                 text_size: self.size
             Label:
-                text: "Para"
+                text: "E-mail de quem vai receber"
                 color: app.cor_texto_muted
                 size_hint_y: None
                 height: dp(20)
                 halign: "left"
                 text_size: self.size
-            Spinner:
-                id: spinner_destino
-                text: root.nome_destino
-                values: root.opcoes_destino
-                size_hint_y: None
-                height: dp(44)
-                background_normal: ""
-                background_color: app.cor_card_claro
-                color: app.cor_texto
-                on_text: root.selecionar_destino(self.text)
+            PBInput:
+                id: campo_email_destino
+                hint_text: "email@exemplo.com"
+                input_type: "mail"
             Label:
                 text: "Valor (pontos)"
                 color: app.cor_texto_muted
@@ -293,7 +301,7 @@ KV = """
         CardBox:
             orientation: "vertical"
             size_hint_y: None
-            height: dp(180)
+            height: dp(290)
             Label:
                 text: "Nome da conta"
                 color: app.cor_texto_muted
@@ -315,6 +323,22 @@ KV = """
                 id: campo_saldo
                 hint_text: "0,00"
                 input_filter: "float"
+            Label:
+                text: "Categoria"
+                color: app.cor_texto_muted
+                size_hint_y: None
+                height: dp(20)
+                halign: "left"
+                text_size: self.size
+            Spinner:
+                id: spinner_categoria
+                text: "Comum"
+                values: ["Comum", "Investimento", "Porquinho"]
+                size_hint_y: None
+                height: dp(44)
+                background_normal: ""
+                background_color: app.cor_card_claro
+                color: app.cor_texto
         PBButton:
             text: "Criar conta"
             on_release: root.criar()
@@ -359,6 +383,174 @@ KV = """
         PBButton:
             text: "Confirmar depósito"
             on_release: root.confirmar()
+
+<MenuScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(18)
+        spacing: dp(14)
+        TopBar:
+            PBSecondaryButton:
+                text: "< Voltar"
+                size_hint_x: None
+                width: dp(90)
+                on_release: root.voltar()
+            Label:
+                text: "Menu"
+                color: app.cor_texto
+                bold: True
+                font_size: "20sp"
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+        CardBox:
+            orientation: "vertical"
+            size_hint_y: None
+            height: dp(80)
+            Label:
+                text: "Usuário"
+                color: app.cor_texto_muted
+                font_size: "13sp"
+                size_hint_y: None
+                height: dp(18)
+                halign: "left"
+                text_size: self.size
+            Label:
+                text: root.nome_usuario
+                color: app.cor_texto
+                bold: True
+                font_size: "18sp"
+                halign: "left"
+                text_size: self.size
+
+        PBSecondaryButton:
+            text: "Termos de Uso"
+            on_release: root.ir_termos()
+
+        PBSecondaryButton:
+            text: "Sair"
+            on_release: root.sair()
+
+<TermosScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(18)
+        spacing: dp(14)
+        TopBar:
+            PBSecondaryButton:
+                text: "< Voltar"
+                size_hint_x: None
+                width: dp(90)
+                on_release: root.voltar()
+            Label:
+                text: "Termos de Uso"
+                color: app.cor_texto
+                bold: True
+                font_size: "18sp"
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+        ScrollView:
+            Label:
+                text: root.texto_termos
+                color: app.cor_texto
+                size_hint_y: None
+                height: self.texture_size[1]
+                text_size: self.width, None
+                halign: "left"
+                valign: "top"
+                font_size: "14sp"
+
+<LoginScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(24)
+        spacing: dp(16)
+
+        Widget:
+            size_hint_y: None
+            height: dp(40)
+
+        Label:
+            text: "Ipoint"
+            color: app.cor_ciano
+            bold: True
+            font_size: "30sp"
+            size_hint_y: None
+            height: dp(44)
+
+        Label:
+            text: "Entre com sua conta"
+            color: app.cor_texto_muted
+            size_hint_y: None
+            height: dp(24)
+
+        Widget:
+            size_hint_y: None
+            height: dp(10)
+
+        PBInput:
+            id: campo_email
+            hint_text: "E-mail"
+            input_type: "mail"
+
+        PBInput:
+            id: campo_senha
+            hint_text: "Senha"
+            password: True
+
+        PBButton:
+            text: "Entrar"
+            on_release: root.entrar()
+
+        PBSecondaryButton:
+            text: "Criar conta nova"
+            on_release: root.ir_registro()
+
+        Widget:
+
+<RegisterScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(24)
+        spacing: dp(16)
+
+        TopBar:
+            PBSecondaryButton:
+                text: "< Voltar"
+                size_hint_x: None
+                width: dp(90)
+                on_release: root.voltar()
+            Label:
+                text: "Criar conta"
+                color: app.cor_texto
+                bold: True
+                font_size: "20sp"
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+        PBInput:
+            id: campo_email
+            hint_text: "E-mail"
+            input_type: "mail"
+
+        PBInput:
+            id: campo_senha
+            hint_text: "Senha (mínimo 6 caracteres)"
+            password: True
+
+        PBInput:
+            id: campo_senha_confirma
+            hint_text: "Confirme a senha"
+            password: True
+
+        PBButton:
+            text: "Registrar"
+            on_release: root.registrar()
+
+        Widget:
 """
 
 
@@ -400,7 +592,11 @@ class HomeScreen(Screen):
 
     def refresh(self):
         app = App.get_running_app()
-        contas = db.listar_contas()
+        try:
+            contas = db.listar_contas()
+        except db.ApiError as e:
+            popup_erro(str(e))
+            return
         if not contas:
             return
         if app.conta_atual_id is None or not any(c["id"] == app.conta_atual_id for c in contas):
@@ -414,6 +610,10 @@ class HomeScreen(Screen):
         for c in contas:
             item = self._linha_conta(c)
             lista.add_widget(item)
+
+    def _rotulo_categoria(self, categoria):
+        rotulos = {"investimento": "[Investimento] ", "porquinho": "[Porquinho] "}
+        return rotulos.get((categoria or "comum").lower(), "")
 
     def _linha_conta(self, conta):
         app = App.get_running_app()
@@ -435,7 +635,8 @@ class HomeScreen(Screen):
                 RoundedRectangle(pos=box.pos, size=box.size, radius=[dp(14)])
 
         box.bind(pos=redraw, size=redraw)
-        nome_lbl = Label(text=conta["nome"], color=COR_TEXTO, halign="left",
+        nome_lbl = Label(text=self._rotulo_categoria(conta["categoria"]) + conta["nome"],
+                          color=COR_TEXTO, halign="left",
                           valign="middle", bold=(conta["id"] == app.conta_atual_id))
         nome_lbl.bind(size=lambda w, *_: setattr(w, "text_size", w.size))
         saldo_lbl = Label(text=fmt(conta["saldo"]) + " pts", color=COR_CIANO,
@@ -466,37 +667,36 @@ class HomeScreen(Screen):
     def ir_depositar(self):
         self.manager.current = "depositar"
 
+    def ir_menu(self):
+        self.manager.current = "menu"
+
+    def resgatar_bonus(self):
+        try:
+            valor = db.resgatar_bonus_diario()
+        except db.ApiError as e:
+            popup_erro(str(e))
+            return
+        popup_erro(f"Você ganhou {fmt(valor)} pontos de bônus!")
+        self.refresh()
+
 
 class TransferirScreen(Screen):
     nome_origem = StringProperty("")
-    nome_destino = StringProperty("")
-    opcoes_destino = ObjectProperty([])
-    destino_id = NumericProperty(0)
 
     def on_pre_enter(self, *args):
         app = App.get_running_app()
-        contas = db.listar_contas()
-        origem = next(c for c in contas if c["id"] == app.conta_atual_id)
-        self.nome_origem = origem["nome"]
-        outras = [c for c in contas if c["id"] != app.conta_atual_id]
-        self._mapa = {c["nome"]: c["id"] for c in outras}
-        self.opcoes_destino = list(self._mapa.keys())
-        if outras:
-            self.nome_destino = outras[0]["nome"]
-            self.destino_id = outras[0]["id"]
-        else:
-            self.nome_destino = "Crie outra conta primeiro"
-            self.destino_id = 0
-
-    def selecionar_destino(self, nome):
-        if nome in self._mapa:
-            self.destino_id = self._mapa[nome]
+        try:
+            contas = db.listar_contas()
+            origem = next(c for c in contas if c["id"] == app.conta_atual_id)
+            self.nome_origem = origem["nome"]
+        except Exception:
+            self.nome_origem = ""
 
     def confirmar(self):
-        app = App.get_running_app()
+        email_destino = self.ids.campo_email_destino.text.strip()
         campo = self.ids.campo_valor
-        if not self.destino_id:
-            popup_erro("Crie outra conta antes de transferir.")
+        if not email_destino:
+            popup_erro("Digite o e-mail de quem vai receber.")
             return
         try:
             valor = parse_valor(campo.text)
@@ -504,10 +704,11 @@ class TransferirScreen(Screen):
             popup_erro("Digite um valor válido.")
             return
         try:
-            db.transferir(app.conta_atual_id, self.destino_id, valor)
-        except ValueError as e:
+            db.transferir_para_email(email_destino, valor)
+        except db.ApiError as e:
             popup_erro(str(e))
             return
+        self.ids.campo_email_destino.text = ""
         campo.text = ""
         self.manager.current = "home"
 
@@ -518,7 +719,11 @@ class TransferirScreen(Screen):
 class ExtratoScreen(Screen):
     def on_pre_enter(self, *args):
         app = App.get_running_app()
-        transacoes = db.extrato(app.conta_atual_id)
+        try:
+            transacoes = db.extrato(app.conta_atual_id)
+        except db.ApiError as e:
+            popup_erro(str(e))
+            transacoes = []
         lista = self.ids.lista_extrato
         lista.clear_widgets()
         if not transacoes:
@@ -578,10 +783,17 @@ class NovaContaScreen(Screen):
         except ValueError:
             popup_erro("Saldo inicial inválido.")
             return
-        novo_id = db.criar_conta(nome, saldo)
+        categoria_map = {"Comum": "comum", "Investimento": "investimento", "Porquinho": "porquinho"}
+        categoria = categoria_map.get(self.ids.spinner_categoria.text, "comum")
+        try:
+            novo_id = db.criar_conta(nome, saldo, categoria)
+        except db.ApiError as e:
+            popup_erro(str(e))
+            return
         App.get_running_app().conta_atual_id = novo_id
         self.ids.campo_nome.text = ""
         self.ids.campo_saldo.text = ""
+        self.ids.spinner_categoria.text = "Comum"
         self.manager.current = "home"
 
     def voltar(self):
@@ -593,7 +805,10 @@ class DepositarScreen(Screen):
 
     def on_pre_enter(self, *args):
         app = App.get_running_app()
-        conta = db.obter_conta(app.conta_atual_id)
+        try:
+            conta = db.obter_conta(app.conta_atual_id)
+        except db.ApiError:
+            conta = None
         self.nome_conta_atual = conta["nome"] if conta else ""
 
     def confirmar(self):
@@ -606,7 +821,7 @@ class DepositarScreen(Screen):
         desc = self.ids.campo_desc.text.strip() or "Depósito"
         try:
             db.depositar(app.conta_atual_id, valor, desc)
-        except ValueError as e:
+        except db.ApiError as e:
             popup_erro(str(e))
             return
         self.ids.campo_valor.text = ""
@@ -615,6 +830,101 @@ class DepositarScreen(Screen):
 
     def voltar(self):
         self.manager.current = "home"
+
+
+class MenuScreen(Screen):
+    nome_usuario = StringProperty("")
+
+    def on_pre_enter(self, *args):
+        self.nome_usuario = db.usuario_atual() or "Convidado"
+
+    def ir_termos(self):
+        self.manager.current = "termos"
+
+    def sair(self):
+        db.logout()
+        App.get_running_app().conta_atual_id = None
+        self.manager.current = "login"
+
+    def voltar(self):
+        self.manager.current = "home"
+
+
+class TermosScreen(Screen):
+    texto_termos = StringProperty(
+        "Termos de Uso do Ipoint\n\n"
+        "1. Sobre os pontos\n"
+        "Os pontos utilizados neste aplicativo nao possuem qualquer valor "
+        "monetario real. Eles servem apenas para uso dentro do proprio "
+        "aplicativo, como forma de organizacao pessoal.\n\n"
+        "2. Proibicao de troca por dinheiro real\n"
+        "E estritamente proibido negociar, vender ou trocar pontos deste "
+        "aplicativo por dinheiro real ou qualquer outro item de valor "
+        "monetario. Qualquer pessoa que for identificada trocando pontos "
+        "por dinheiro real esta sujeita a banimento do aplicativo.\n\n"
+        "3. Responsabilidade\n"
+        "O usuario e responsavel por manter suas informacoes de acesso em "
+        "seguranca. O Ipoint nao se responsabiliza por perdas de saldo "
+        "causadas por uso indevido da conta por terceiros.\n\n"
+        "4. Alteracoes\n"
+        "Estes termos podem ser atualizados a qualquer momento para "
+        "melhor atender aos usuarios do aplicativo."
+    )
+
+    def voltar(self):
+        self.manager.current = "menu"
+
+
+class LoginScreen(Screen):
+    def entrar(self):
+        email = self.ids.campo_email.text.strip()
+        senha = self.ids.campo_senha.text
+        if not email or not senha:
+            popup_erro("Preencha e-mail e senha.")
+            return
+        try:
+            db.login(email, senha)
+        except db.ApiError as e:
+            popup_erro(str(e))
+            return
+        self.ids.campo_senha.text = ""
+        App.get_running_app().conta_atual_id = None
+        self.manager.current = "home"
+
+    def ir_registro(self):
+        self.manager.current = "registro"
+
+
+class RegisterScreen(Screen):
+    def registrar(self):
+        email = self.ids.campo_email.text.strip()
+        senha = self.ids.campo_senha.text
+        senha_confirma = self.ids.campo_senha_confirma.text
+        if not email or not senha:
+            popup_erro("Preencha e-mail e senha.")
+            return
+        if len(senha) < 6:
+            popup_erro("A senha precisa ter pelo menos 6 caracteres.")
+            return
+        if senha != senha_confirma:
+            popup_erro("As senhas não são iguais.")
+            return
+        try:
+            logado = db.registrar(email, senha)
+        except db.ApiError as e:
+            popup_erro(str(e))
+            return
+        self.ids.campo_senha.text = ""
+        self.ids.campo_senha_confirma.text = ""
+        if logado:
+            App.get_running_app().conta_atual_id = None
+            self.manager.current = "home"
+        else:
+            popup_erro("Conta criada! Confirme seu e-mail antes de entrar (verifique também o spam).")
+            self.manager.current = "login"
+
+    def voltar(self):
+        self.manager.current = "login"
 
 
 class PontosBankApp(App):
@@ -631,14 +941,18 @@ class PontosBankApp(App):
         self.title = "Ipoint"
         self.conta_atual_id = None
         Builder.load_string(KV)
-        db.init_db()
 
         sm = ScreenManager(transition=SlideTransition())
+        sm.add_widget(LoginScreen(name="login"))
+        sm.add_widget(RegisterScreen(name="registro"))
         sm.add_widget(HomeScreen(name="home"))
         sm.add_widget(TransferirScreen(name="transferir"))
         sm.add_widget(ExtratoScreen(name="extrato"))
         sm.add_widget(NovaContaScreen(name="nova_conta"))
         sm.add_widget(DepositarScreen(name="depositar"))
+        sm.add_widget(MenuScreen(name="menu"))
+        sm.add_widget(TermosScreen(name="termos"))
+        sm.current = "login"
         return sm
 
 

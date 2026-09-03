@@ -90,8 +90,8 @@ E repete o Passo 4 pra pegar o novo APK.
 
 ## Estrutura do projeto
 
-- `main.py` — telas e visual do app (Kivy)
-- `db.py` — toda a lógica de contas, saldo e transferências (SQLite local)
+- `main.py` — telas e visual do app (Kivy), incluindo login/registro
+- `api.py` — conversa com o servidor (Supabase): login, contas, transferências, bônus diário
 - `icon.png` — ícone do app (aparece na tela inicial do Android)
 - `buildozer.spec` — configuração de como o app é empacotado pro Android
 - `.github/workflows/build.yml` — robô que compila o APK automaticamente
