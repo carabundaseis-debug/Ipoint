@@ -6,6 +6,7 @@ from kivy.app import App
 from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, Screen, SlideTransition
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
@@ -150,11 +151,19 @@ KV = """
                 bold: True
                 font_size: "22sp"
                 on_release: root.ir_menu()
+            Image:
+                source: "icon.png"
+                size_hint_x: None
+                width: dp(40)
+                allow_stretch: True
+                keep_ratio: True
             Label:
                 text: "Ipoint"
-                color: app.cor_texto
                 bold: True
-                font_size: "22sp"
+                font_size: "24sp"
+                italic: True
+                markup: True
+                color: app.cor_ciano
                 halign: "left"
                 valign: "middle"
                 text_size: self.size
@@ -827,15 +836,40 @@ def parse_valor(texto):
 
 
 def popup_erro(mensagem):
-    box = BoxLayout(orientation="vertical", padding=dp(16), spacing=dp(12))
-    box.add_widget(Label(text=mensagem, color=COR_TEXTO))
-    btn = Button(text="OK", size_hint_y=None, height=dp(44),
-                 background_normal="", background_color=COR_CIANO, color=(0.02, 0.06, 0.10, 1))
+    from kivy.graphics import Color, RoundedRectangle
+    box = BoxLayout(orientation="vertical", padding=dp(18), spacing=dp(14))
+
+    def redraw(*_):
+        box.canvas.before.clear()
+        with box.canvas.before:
+            Color(*COR_CARD)
+            RoundedRectangle(pos=box.pos, size=box.size, radius=[dp(20)])
+
+    box.bind(pos=redraw, size=redraw)
+    lbl = Label(text=mensagem, color=COR_TEXTO, halign="center", valign="middle")
+    lbl.bind(size=lambda w, *_: setattr(w, "text_size", w.size))
+    box.add_widget(lbl)
+    btn = Button(text="OK", size_hint_y=None, height=dp(46),
+                 background_normal="", background_color=(0, 0, 0, 0),
+                 color=(0.02, 0.06, 0.10, 1), bold=True)
+
+    def redraw_btn(*_):
+        btn.canvas.before.clear()
+        with btn.canvas.before:
+            Color(*COR_CIANO)
+            RoundedRectangle(pos=btn.pos, size=btn.size, radius=[dp(20)])
+
+    btn.bind(pos=redraw_btn, size=redraw_btn)
     box.add_widget(btn)
-    pop = Popup(title="Ops", content=box, size_hint=(0.8, 0.35),
-                background_color=COR_CARD, separator_color=COR_CIANO)
+    pop = Popup(title="", content=box, size_hint=(0.82, 0.36),
+                separator_height=0, background="", background_color=(0, 0, 0, 0))
     btn.bind(on_release=pop.dismiss)
     pop.open()
+
+
+class LinhaClicavel(ButtonBehavior, BoxLayout):
+    """BoxLayout que também dispara on_release, tipo um botão — usado nas listas."""
+    pass
 
 
 class HomeScreen(Screen):
@@ -885,14 +919,12 @@ class HomeScreen(Screen):
 
     def _linha_conta(self, conta):
         app = App.get_running_app()
-        linha = Button(
+        box = LinhaClicavel(
+            orientation="horizontal",
+            padding=[dp(14), 0],
             size_hint_y=None,
             height=dp(56),
-            background_normal="",
-            background_color=(0, 0, 0, 0),
-            halign="left",
         )
-        box = BoxLayout(padding=[dp(14), 0], size_hint_y=None, height=dp(56))
         from kivy.graphics import Color, RoundedRectangle
 
         def redraw(*_):
@@ -905,10 +937,12 @@ class HomeScreen(Screen):
         box.bind(pos=redraw, size=redraw)
         nome_lbl = Label(text=self._rotulo_categoria(conta["categoria"]) + conta["nome"],
                           color=COR_TEXTO, halign="left",
-                          valign="middle", bold=(conta["id"] == app.conta_atual_id))
+                          valign="middle", bold=(conta["id"] == app.conta_atual_id),
+                          shorten=True, shorten_from="right")
         nome_lbl.bind(size=lambda w, *_: setattr(w, "text_size", w.size))
         saldo_lbl = Label(text=fmt(conta["saldo"]) + " pts", color=self._cor_categoria(conta["categoria"]),
-                           halign="right", valign="middle", bold=True)
+                           halign="right", valign="middle", bold=True,
+                           size_hint_x=None, width=dp(110))
         saldo_lbl.bind(size=lambda w, *_: setattr(w, "text_size", w.size))
         box.add_widget(nome_lbl)
         box.add_widget(saldo_lbl)
@@ -917,11 +951,8 @@ class HomeScreen(Screen):
             app.conta_atual_id = conta["id"]
             self.refresh()
 
-        wrapper = Button(size_hint_y=None, height=dp(56), background_normal="",
-                          background_color=(0, 0, 0, 0))
-        wrapper.add_widget(box)
-        wrapper.bind(on_release=selecionar)
-        return wrapper
+        box.bind(on_release=selecionar)
+        return box
 
     def ir_transferir(self):
         self.manager.current = "transferir"
