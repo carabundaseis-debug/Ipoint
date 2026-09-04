@@ -94,6 +94,25 @@ KV = """
             size: self.size
             radius: [dp(22)]
 
+<PBTile@Button>:
+    background_normal: ""
+    background_down: ""
+    background_color: (0,0,0,0)
+    color: app.cor_texto
+    bold: True
+    font_size: "13sp"
+    halign: "center"
+    valign: "middle"
+    text_size: self.size
+    padding: [dp(4), dp(4)]
+    canvas.before:
+        Color:
+            rgba: app.cor_card_claro if self.state == "normal" else app.cor_azul_medio
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(18)]
+
 <PBInput@TextInput>:
     background_color: app.cor_card_claro
     foreground_color: app.cor_texto
@@ -201,31 +220,29 @@ KV = """
                 size_hint_y: None
                 height: dp(16)
 
-        BoxLayout:
+        GridLayout:
+            cols: 3
             size_hint_y: None
-            height: dp(48)
+            height: dp(158)
             spacing: dp(10)
-            PBButton:
+            PBTile:
                 text: "Transferir"
                 on_release: root.ir_transferir()
-            PBButton:
+            PBTile:
                 text: "Extrato"
                 on_release: root.ir_extrato()
-
-        BoxLayout:
-            size_hint_y: None
-            height: dp(44)
-            spacing: dp(10)
-            PBSecondaryButton:
-                text: "+ Depositar"
+            PBTile:
+                text: "Depositar"
                 on_release: root.ir_depositar()
-            PBSecondaryButton:
-                text: "+ Nova conta"
+            PBTile:
+                text: "Nova conta"
                 on_release: root.ir_nova_conta()
-
-        PBSecondaryButton:
-            text: "Resgatar bônus diário"
-            on_release: root.resgatar_bonus()
+            PBTile:
+                text: "Bônus diário"
+                on_release: root.resgatar_bonus()
+            PBTile:
+                text: "Minha Chave"
+                on_release: root.ir_chave()
 
         Label:
             text: "Minhas contas"
@@ -571,6 +588,28 @@ KV = """
                 text_size: self.size
 
         Widget:
+
+<BootScreen>:
+    FloatLayout:
+        canvas.before:
+            Color:
+                rgba: app.cor_fundo
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        SpinnerCarregando:
+            id: spinner_boot
+            size_hint: None, None
+            size: dp(140), dp(140)
+            pos_hint: {"center_x": 0.5, "center_y": 0.55}
+        Label:
+            text: "Ipoint"
+            color: app.cor_ciano
+            bold: True
+            font_size: "22sp"
+            size_hint: None, None
+            size: dp(200), dp(40)
+            pos_hint: {"center_x": 0.5, "center_y": 0.30}
 
 <PinScreen>:
     BoxLayout:
@@ -925,6 +964,21 @@ class SpinnerCarregando(Image):
     angulo = NumericProperty(0)
 
 
+class BootScreen(Screen):
+    def on_enter(self, *args):
+        spinner = self.ids.spinner_boot
+        anim = Animation(angulo=360, duration=1.1)
+        anim.repeat = True
+        anim.start(spinner)
+        self._anim = anim
+        Clock.schedule_once(self._seguir, 1.3)
+
+    def _seguir(self, *args):
+        if hasattr(self, "_anim"):
+            self._anim.cancel(self.ids.spinner_boot)
+        self.manager.current = "pin" if db.tem_pin_configurado() else "login"
+
+
 def _popup_carregando():
     box = BoxLayout(padding=dp(24))
     spinner = SpinnerCarregando(size_hint=(None, None), size=(dp(90), dp(90)),
@@ -1065,6 +1119,9 @@ class HomeScreen(Screen):
 
     def ir_menu(self):
         self.manager.current = "menu"
+
+    def ir_chave(self):
+        self.manager.current = "chave"
 
     def resgatar_bonus(self):
         try:
@@ -1593,6 +1650,7 @@ class PontosBankApp(App):
         Builder.load_string(KV)
 
         sm = ScreenManager(transition=SlideTransition())
+        sm.add_widget(BootScreen(name="boot"))
         sm.add_widget(LoginScreen(name="login"))
         sm.add_widget(RegisterScreen(name="registro"))
         sm.add_widget(HomeScreen(name="home"))
@@ -1608,7 +1666,7 @@ class PontosBankApp(App):
         sm.add_widget(AvisosScreen(name="avisos"))
         sm.add_widget(NovoAvisoScreen(name="novo_aviso"))
         sm.add_widget(TrocarSenhaScreen(name="trocar_senha"))
-        sm.current = "pin" if db.tem_pin_configurado() else "login"
+        sm.current = "boot"
         return sm
 
 
