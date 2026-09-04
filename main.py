@@ -95,9 +95,7 @@ KV = """
             radius: [dp(22)]
 
 <PBInput@TextInput>:
-    background_normal: ""
-    background_active: ""
-    background_color: (0, 0, 0, 0)
+    background_color: app.cor_card_claro
     foreground_color: app.cor_texto
     hint_text_color: app.cor_texto_muted
     cursor_color: app.cor_ciano
@@ -105,13 +103,6 @@ KV = """
     size_hint_y: None
     height: dp(48)
     multiline: False
-    canvas.before:
-        Color:
-            rgba: app.cor_card_claro
-        RoundedRectangle:
-            pos: self.pos
-            size: self.size
-            radius: [dp(22)]
 
 <TopBar@BoxLayout>:
     size_hint_y: None
