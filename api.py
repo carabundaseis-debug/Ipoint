@@ -293,6 +293,20 @@ def entrar_com_pin(pin):
         json.dump(dados, f)
 
 
+def trocar_senha(nova_senha):
+    try:
+        r = requests.put(
+            f"{SUPABASE_URL}/auth/v1/user",
+            json={"password": nova_senha},
+            headers=_headers(),
+            timeout=20,
+        )
+    except requests.RequestException:
+        raise ApiError("Não foi possível conectar. Verifique sua internet.")
+    if r.status_code >= 400:
+        raise ApiError(_erro_de(r))
+
+
 def remover_pin():
     caminho = _arquivo_sessao()
     if os.path.exists(caminho):

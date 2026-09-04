@@ -11,9 +11,13 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.spinner import Spinner
+from kivy.uix.image import Image
 from kivy.properties import StringProperty, NumericProperty, ObjectProperty
 from kivy.metrics import dp
 from kivy.core.window import Window
+from kivy.clock import Clock
+from kivy.animation import Animation
+import threading
 
 import api as db
 
@@ -133,6 +137,16 @@ KV = """
     background_normal: ""
     background_down: ""
     background_color: app.cor_azul_aco
+
+<SpinnerCarregando>:
+    source: "spinner.png"
+    canvas.before:
+        PushMatrix
+        Rotate:
+            angle: self.angulo
+            origin: self.center
+    canvas.after:
+        PopMatrix
 
 <HomeScreen>:
     BoxLayout:
@@ -482,6 +496,10 @@ KV = """
             on_release: root.ir_avisos()
 
         PBSecondaryButton:
+            text: "Trocar senha"
+            on_release: root.ir_trocar_senha()
+
+        PBSecondaryButton:
             text: "Sair"
             on_release: root.sair()
 
@@ -726,6 +744,42 @@ KV = """
             text: "Publicar"
             on_release: root.publicar()
 
+<TrocarSenhaScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(18)
+        spacing: dp(14)
+        TopBar:
+            PBSecondaryButton:
+                text: "< Voltar"
+                size_hint_x: None
+                width: dp(90)
+                on_release: root.voltar()
+            Label:
+                text: "Trocar senha"
+                color: app.cor_texto
+                bold: True
+                font_size: "18sp"
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+        PBInput:
+            id: campo_senha
+            hint_text: "Nova senha (mínimo 6 caracteres)"
+            password: True
+
+        PBInput:
+            id: campo_senha_confirma
+            hint_text: "Confirme a nova senha"
+            password: True
+
+        PBButton:
+            text: "Salvar nova senha"
+            on_release: root.salvar()
+
+        Widget:
+
 <LoginScreen>:
     BoxLayout:
         orientation: "vertical"
@@ -771,6 +825,10 @@ KV = """
         PBSecondaryButton:
             text: "Criar conta nova"
             on_release: root.ir_registro()
+
+        PBSecondaryButton:
+            text: "Esqueci minha senha"
+            on_release: root.esqueci_senha()
 
         Widget:
 
@@ -870,6 +928,54 @@ def popup_erro(mensagem):
 class LinhaClicavel(ButtonBehavior, BoxLayout):
     """BoxLayout que também dispara on_release, tipo um botão — usado nas listas."""
     pass
+
+
+class SpinnerCarregando(Image):
+    angulo = NumericProperty(0)
+
+
+def _popup_carregando():
+    box = BoxLayout(padding=dp(24))
+    spinner = SpinnerCarregando(size_hint=(None, None), size=(dp(90), dp(90)),
+                                 pos_hint={"center_x": 0.5, "center_y": 0.5})
+    box.add_widget(spinner)
+    pop = Popup(title="", content=box, size_hint=(0.5, 0.28), separator_height=0,
+                background="", background_color=(0, 0, 0, 0), auto_dismiss=False)
+    anim = Animation(angulo=360, duration=1.1)
+    anim.repeat = True
+    anim.start(spinner)
+    pop._anim = anim
+    pop._spinner = spinner
+    pop.open()
+    return pop
+
+
+def _fechar_carregando(pop):
+    pop._anim.cancel(pop._spinner)
+    pop.dismiss()
+
+
+def _rodar_em_segundo_plano(tarefa, ao_terminar):
+    """Roda `tarefa` (sem argumentos) numa thread separada, mostrando o spinner,
+    e chama `ao_terminar(erro)` na thread principal quando acabar (erro=None se deu certo)."""
+    pop = _popup_carregando()
+
+    def trabalhar():
+        erro = None
+        try:
+            tarefa()
+        except db.ApiError as e:
+            erro = str(e)
+        except Exception as e:
+            erro = f"Erro inesperado: {e}"
+
+        def finalizar(*_):
+            _fechar_carregando(pop)
+            ao_terminar(erro)
+
+        Clock.schedule_once(finalizar, 0)
+
+    threading.Thread(target=trabalhar, daemon=True).start()
 
 
 class HomeScreen(Screen):
@@ -1149,6 +1255,9 @@ class MenuScreen(Screen):
     def ir_avisos(self):
         self.manager.current = "avisos"
 
+    def ir_trocar_senha(self):
+        self.manager.current = "trocar_senha"
+
     def sair(self):
         db.logout()
         db.remover_pin()
@@ -1246,14 +1355,19 @@ class PinScreen(Screen):
         if not pin:
             popup_erro("Digite seu PIN.")
             return
-        try:
+
+        def tarefa():
             db.entrar_com_pin(pin)
-        except db.ApiError as e:
-            popup_erro(str(e))
-            return
-        self.ids.campo_pin.text = ""
-        App.get_running_app().conta_atual_id = None
-        self.manager.current = "home"
+
+        def ao_terminar(erro):
+            if erro:
+                popup_erro(erro)
+                return
+            self.ids.campo_pin.text = ""
+            App.get_running_app().conta_atual_id = None
+            self.manager.current = "home"
+
+        _rodar_em_segundo_plano(tarefa, ao_terminar)
 
     def usar_login(self):
         self.ids.campo_pin.text = ""
@@ -1376,6 +1490,30 @@ class NovoAvisoScreen(Screen):
         self.manager.current = "avisos"
 
 
+class TrocarSenhaScreen(Screen):
+    def salvar(self):
+        senha = self.ids.campo_senha.text
+        confirma = self.ids.campo_senha_confirma.text
+        if len(senha) < 6:
+            popup_erro("A senha precisa ter pelo menos 6 caracteres.")
+            return
+        if senha != confirma:
+            popup_erro("As senhas não são iguais.")
+            return
+        try:
+            db.trocar_senha(senha)
+        except db.ApiError as e:
+            popup_erro(str(e))
+            return
+        self.ids.campo_senha.text = ""
+        self.ids.campo_senha_confirma.text = ""
+        popup_erro("Senha alterada com sucesso!")
+        self.manager.current = "menu"
+
+    def voltar(self):
+        self.manager.current = "menu"
+
+
 class LoginScreen(Screen):
     def entrar(self):
         email = self.ids.campo_email.text.strip()
@@ -1383,17 +1521,34 @@ class LoginScreen(Screen):
         if not email or not senha:
             popup_erro("Preencha e-mail e senha.")
             return
-        try:
+
+        def tarefa():
             db.login(email, senha)
-        except db.ApiError as e:
-            popup_erro(str(e))
-            return
-        self.ids.campo_senha.text = ""
-        App.get_running_app().conta_atual_id = None
-        self.manager.current = "home"
+
+        def ao_terminar(erro):
+            if erro:
+                popup_erro(erro)
+                return
+            self.ids.campo_senha.text = ""
+            App.get_running_app().conta_atual_id = None
+            self.manager.current = "home"
+
+        _rodar_em_segundo_plano(tarefa, ao_terminar)
 
     def ir_registro(self):
         self.manager.current = "registro"
+
+    def esqueci_senha(self):
+        if db.tem_pin_configurado():
+            popup_erro("Entre com seu PIN nesse aparelho e troque a senha pelo Menu.")
+            self.manager.current = "pin"
+        else:
+            popup_erro(
+                "Ainda não temos recuperação por e-mail configurada. "
+                "Se você tiver um PIN salvo nesse aparelho, use-o pra entrar. "
+                "Sem PIN salvo, por enquanto não dá pra recuperar sozinho — "
+                "me avisa que a gente configura a recuperação por e-mail."
+            )
 
 
 class RegisterScreen(Screen):
@@ -1461,6 +1616,7 @@ class PontosBankApp(App):
         sm.add_widget(CriarPinScreen(name="criar_pin"))
         sm.add_widget(AvisosScreen(name="avisos"))
         sm.add_widget(NovoAvisoScreen(name="novo_aviso"))
+        sm.add_widget(TrocarSenhaScreen(name="trocar_senha"))
         sm.current = "pin" if db.tem_pin_configurado() else "login"
         return sm
 
